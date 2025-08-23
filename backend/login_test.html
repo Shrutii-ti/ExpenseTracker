@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Google Sign-in Test</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        #g_id_onload {
+            display: none;
+        }
+        #token-display {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Google Sign-in Test</h1>
+        
+        <div id="g_id_onload"
+             data-client_id="536455245201-jcub08aa0k0qsiqo08s63563gbdck4qg.apps.googleusercontent.com"
+             data-callback="handleCredentialResponse"
+             data-auto_prompt="false">
+        </div>
+        
+        <div class="g_id_signin" data-type="standard"></div>
+        
+        <div id="status" style="display: none;"></div>
+        <pre id="token-display"></pre>
+    </div>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+        function handleCredentialResponse(response) {
+            const statusDiv = document.getElementById('status');
+            const tokenDisplay = document.getElementById('token-display');
+            
+            try {
+                // Decode the JWT token to see the payload
+                const payload = JSON.parse(atob(response.credential.split('.')[1]));
+                
+                // Show success status
+                statusDiv.style.display = 'block';
+                statusDiv.innerHTML = `✅ Successfully signed in as: ${payload.name} (${payload.email})`;
+                
+                // Display the token
+                tokenDisplay.textContent = `ID Token:\n${response.credential}\n\n\nDecoded Payload:\n${JSON.stringify(payload, null, 2)}`;
+                
+                // Also log to console for easy copying
+                console.log('ID Token:', response.credential);
+                console.log('Decoded Payload:', payload);
+                
+            } catch (error) {
+                statusDiv.style.display = 'block';
+                statusDiv.innerHTML = `❌ Error processing token: ${error.message}`;
+                statusDiv.style.background = '#f8d7da';
+                statusDiv.style.color = '#721c24';
+                statusDiv.style.border = '1px solid #f5c6cb';
+                console.error('Error processing token:', error);
+            }
+        }
+        
+        // Check if we're running on a proper server
+        window.onload = function() {
+            if (window.location.protocol === 'file:') {
+                document.getElementById('status').style.display = 'block';
+                document.getElementById('status').innerHTML = `
+                    ❌ This page must be served from a web server. 
+                    Please access it at: <a href="http://localhost:3001/test-login">http://localhost:3001/test-login</a>
+                `;
+                document.getElementById('status').style.background = '#f8d7da';
+                document.getElementById('status').style.color = '#721c24';
+                document.getElementById('status').style.border = '1px solid #f5c6cb';
+            }
+        };
+    </script>
+</body>
+</html>

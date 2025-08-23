@@ -2,22 +2,20 @@
 
 const jwt = require('jsonwebtoken');
 
-// Middleware to protect routes by verifying the session token
+// Middleware to verify the session ID and set user info.
 exports.protect = (req, res, next) => {
-    const sessionToken = req.signedCookies['session-token'];
+    const sessionId = req.signedCookies['session-id'];
 
-    if (!sessionToken) {
+    if (!sessionId) {
         return res.status(401).json({ message: 'Not authenticated' });
     }
 
-    try {
-        // Verify the token using your secret key
-        jwt.verify(sessionToken, process.env.JWT_SECRET);
-        // If the token is valid, pass control to the next middleware or route handler
-        next();
-    } catch (err) {
-        // If the token is invalid or expired, clear the cookie and send an error
-        res.clearCookie('session-token');
-        return res.status(401).json({ message: 'Session expired' });
-    }
+    // Set the user info based on the session ID (which is the Google ID)
+    // The session ID is the Google ID from the login process
+    req.user = {
+        googleId: sessionId
+    };
+    
+    console.log('Auth middleware: User authenticated with googleId:', sessionId);
+    next();
 };
