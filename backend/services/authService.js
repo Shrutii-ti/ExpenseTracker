@@ -5,50 +5,24 @@ const User = require('../models/User');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+// Service function to verify a Google ID Token
 exports.verifyGoogleToken = async (idToken) => {
-    console.log('--- Starting Google Token Verification ---');
-    console.log('GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID);
-    console.log('Received idToken (first 50 chars):', idToken ? idToken.substring(0, 50) + '...' : 'NO TOKEN');
-    
-    // Check if we have a valid Google Client ID
-    if (!process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID === 'your_google_client_id_here') {
-        console.error('❌ GOOGLE_CLIENT_ID is not properly configured in .env file');
-        console.error('Current value:', process.env.GOOGLE_CLIENT_ID);
-        return null;
-    }
-    
-    if (!idToken) {
-        console.error('❌ No idToken provided');
-        return null;
-    }
-    
     try {
         const ticket = await client.verifyIdToken({
             idToken,
             audience: process.env.GOOGLE_CLIENT_ID,
         });
         const payload = ticket.getPayload();
-        console.log('✅ Google Token Verified Successfully');
-        console.log('User info:', {
-            sub: payload.sub,
-            email: payload.email,
-            name: payload.name
-        });
         return payload;
     } catch (error) {
-        console.error('❌ Error Verifying Google Token');
-        console.error('Error type:', error.constructor.name);
-        console.error('Error message:', error.message);
-        console.error('Full error:', error);
+        console.error('--- Error Verifying Google Token ---');
+        console.error('Error:', error.message);
         return null;
     }
 };
 
+// Service function to find or create a user in the database
 exports.findOrCreateUser = async (googlePayload) => {
-    console.log('--- Attempting to Find or Create User ---');
-    console.log('Searching for user with googleId:', googlePayload.sub);
-
-    // Use a try/catch block to catch potential database errors
     try {
         let user = await User.findOne({ googleId: googlePayload.sub });
 
@@ -71,11 +45,4 @@ exports.findOrCreateUser = async (googlePayload) => {
         console.error('Error:', error.message);
         return null;
     }
-};
-
-exports.getExpensesData = () => {
-    return [
-        { id: 1, category: 'Food', amount: 500 },
-        { id: 2, category: 'Travel', amount: 1500 },
-    ];
 };

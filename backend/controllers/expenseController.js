@@ -1,149 +1,161 @@
 // controllers/expenseController.js
 
-const Expense = require('../models/Expense');
-const User = require('../models/User');
+const expenseService = require('../services/expenseService');
+const User = require('../models/User'); 
 
-// Get all expenses for the authenticated user
+// @desc    Get all expenses for the authenticated user
+// @route   GET /expenses
+// @access  Private
 exports.getExpenses = async (req, res) => {
     try {
-        const user = await User.findOne({ googleId: req.user.googleId });
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        const expenses = await Expense.find({ userId: user._id }).sort({ date: -1 });
+        const expenses = await expenseService.getExpenses(req.user._id);
         res.status(200).json(expenses);
     } catch (error) {
-        console.error('Error fetching expenses:', error);
         res.status(500).json({ message: 'Server error while fetching expenses' });
     }
 };
 
-// Create a new expense
+// @desc    Create a new expense
+// @route   POST /expenses
+// @access  Private
 exports.createExpense = async (req, res) => {
     try {
-        const { title, amount, category, description, date } = req.body;
-        
-        // Validate required fields
+        const { title, amount, category, description, date, note } = req.body; 
+
         if (!title || !amount || !category) {
             return res.status(400).json({ message: 'Title, amount, and category are required' });
         }
 
-        const user = await User.findOne({ googleId: req.user.googleId });
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        const expense = new Expense({
-            userId: user._id,
+        const newExpense = await expenseService.createExpense({
+            user: req.user._id, // <-- The fix is here! We pass the user's ID to the service.
             title,
-            amount: parseFloat(amount),
+            amount,
             category,
-            description: description || '',
-            date: date ? new Date(date) : new Date(),
+            description,
+            date,
+            note
         });
 
-        await expense.save();
-        console.log('New expense created:', expense);
-        res.status(201).json(expense);
+        res.status(201).json(newExpense);
     } catch (error) {
-        console.error('Error creating expense:', error);
+        console.error('Error in createExpense:', error);
         res.status(500).json({ message: 'Server error while creating expense' });
     }
 };
 
-// Update an expense
-exports.updateExpense = async (req, res) => {
+// @desc    Get a single expense by ID
+// @route   GET /expenses/:id
+// @access  Private
+exports.getExpenseById = async (req, res) => {
     try {
-        const { id } = req.params;
-        const { title, amount, category, description, date } = req.body;
-
-        const user = await User.findOne({ googleId: req.user.googleId });
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        const expense = await Expense.findOneAndUpdate(
-            { _id: id, userId: user._id },
-            {
-                title,
-                amount: parseFloat(amount),
-                category,
-                description,
-                date: date ? new Date(date) : undefined,
-            },
-            { new: true, runValidators: true }
-        );
-
+        const expense = await expenseService.getExpenseById(req.params.id, req.user._id);
         if (!expense) {
             return res.status(404).json({ message: 'Expense not found' });
         }
-
-        console.log('Expense updated:', expense);
         res.status(200).json(expense);
     } catch (error) {
-        console.error('Error updating expense:', error);
-        res.status(500).json({ message: 'Server error while updating expense' });
+        res.status(500).json({ message: 'Server error' });
     }
 };
 
-// Delete an expense
-exports.deleteExpense = async (req, res) => {
+// @desc    Update an expense by ID
+// @route   PUT /expenses/:id
+// @access  Private
+exports.updateExpense = async (req, res) => {
     try {
-        const { id } = req.params;
-
-        const user = await User.findOne({ googleId: req.user.googleId });
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        const expense = await Expense.findOneAndDelete({ _id: id, userId: user._id });
-
-        if (!expense) {
+        const updatedExpense = await expenseService.updateExpense(req.params.id, req.user._id, req.body);
+        if (!updatedExpense) {
             return res.status(404).json({ message: 'Expense not found' });
         }
-
-        console.log('Expense deleted:', expense._id);
-        res.status(200).json({ message: 'Expense deleted successfully' });
+        res.status(200).json(updatedExpense);
     } catch (error) {
-        console.error('Error deleting expense:', error);
-        res.status(500).json({ message: 'Server error while deleting expense' });
+        res.status(500).json({ message: 'Server error' });
     }
 };
 
-// Get expense statistics
-exports.getExpenseStats = async (req, res) => {
+// @desc    Delete an expense by ID
+// @route   DELETE /expenses/:id
+// @access  Private
+exports.deleteExpense = async (req, res) => {
     try {
-        const user = await User.findOne({ googleId: req.user.googleId });
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+        const deletedExpense = await expenseService.deleteExpense(req.params.id, req.user._id);
+        if (!deletedExpense) {
+            return res.status(404).json({ message: 'Expense not found' });
         }
-
-        const stats = await Expense.aggregate([
-            { $match: { userId: user._id } },
-            {
-                $group: {
-                    _id: '$category',
-                    totalAmount: { $sum: '$amount' },
-                    count: { $sum: 1 },
-                },
-            },
-            { $sort: { totalAmount: -1 } },
-        ]);
-
-        const totalExpenses = await Expense.countDocuments({ userId: user._id });
-        const totalAmount = await Expense.aggregate([
-            { $match: { userId: user._id } },
-            { $group: { _id: null, total: { $sum: '$amount' } } },
-        ]);
-
-        res.status(200).json({
-            categoryStats: stats,
-            totalExpenses,
-            totalAmount: totalAmount[0]?.total || 0,
-        });
+        res.status(200).json({ message: 'Expense deleted successfully' });
     } catch (error) {
-        console.error('Error fetching expense stats:', error);
-        res.status(500).json({ message: 'Server error while fetching stats' });
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// @desc    Get monthly summary
+// @route   GET /expenses/monthly-summary
+// @access  Private
+exports.getMonthlySummary = async (req, res) => {
+    try {
+        const summary = await expenseService.getMonthlySummary(req.user._id);
+        res.status(200).json(summary);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// @desc    Get daily spending trends
+// @route   GET /expenses/daily-trends/:year/:month
+// @access  Private
+exports.getDailyTrends = async (req, res) => {
+    try {
+        const { year, month } = req.params;
+        const trends = await expenseService.getDailyTrends(req.user._id, parseInt(month), parseInt(year));
+        res.status(200).json(trends);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// @desc    Get total expenses and total amount
+// @route   GET /expenses/totals
+// @access  Private
+exports.getTotals = async (req, res) => {
+    try {
+        const totals = await expenseService.getTotals(req.user._id);
+        res.status(200).json(totals);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// @desc    Generate AI summary
+// @route   POST /expenses/ai-summary
+// @access  Private
+exports.getAiSummary = async (req, res) => {
+    try {
+        const { prompt } = req.body;
+        if (!prompt) {
+            return res.status(400).json({ message: 'Prompt is required' });
+        }
+        const summary = await expenseService.getAiSummary(prompt);
+        res.status(200).json({ summary });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// @desc    OCR scan a receipt
+// @route   POST /expenses/ocr-scan
+// @access  Private
+exports.ocrScan = async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+    }
+    
+    try {
+        const result = await expenseService.performOcr(req.file.buffer);
+        if (!result) {
+            return res.status(500).json({ message: 'OCR failed to process image' });
+        }
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error during OCR' });
     }
 };

@@ -5,40 +5,39 @@ const mongoose = require('mongoose');
 // Define the Expense schema
 const expenseSchema = mongoose.Schema(
     {
-        userId: {
+        user: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'User',
             required: true,
+            ref: 'User',
         },
-        title: {
+        title: { // <-- New field
             type: String,
             required: true,
         },
         amount: {
             type: Number,
-            required: true,
-            min: 0,
+            required: [true, 'Please add an amount'],
         },
         category: {
             type: String,
-            required: true,
-            enum: ['Food', 'Travel', 'Entertainment', 'Shopping', 'Bills', 'Healthcare', 'Education', 'Other'],
+            required: [true, 'Please add a category'],
         },
-        description: {
+        description: { // <-- New field
             type: String,
-            default: '',
         },
         date: {
             type: Date,
-            default: Date.now,
+            required: [true, 'Please add a date'],
+        },
+        note: {
+            type: String,
         },
     },
     {
-        timestamps: true, // Adds createdAt and updatedAt fields automatically
+        timestamps: true,
     }
 );
 
-// Create the Expense model from the schema
 const Expense = mongoose.model('Expense', expenseSchema);
 
 module.exports = Expense;

@@ -4,23 +4,28 @@ const express = require('express');
 const router = express.Router();
 const expenseController = require('../controllers/expenseController');
 const authMiddleware = require('../middleware/authMiddleware');
+const multer = require('multer');
+
+// Configure multer for file uploads
+const upload = multer({ storage: multer.memoryStorage() });
 
 // All expense routes are protected
 router.use(authMiddleware.protect);
 
-// GET /api/expenses - Get all expenses for the authenticated user
+// Main CRUD routes
 router.get('/', expenseController.getExpenses);
-
-// POST /api/expenses - Create a new expense
 router.post('/', expenseController.createExpense);
-
-// PUT /api/expenses/:id - Update an expense
+router.get('/:id', expenseController.getExpenseById);
 router.put('/:id', expenseController.updateExpense);
-
-// DELETE /api/expenses/:id - Delete an expense
 router.delete('/:id', expenseController.deleteExpense);
 
-// GET /api/expenses/stats - Get expense statistics
-router.get('/stats', expenseController.getExpenseStats);
+// New dashboard and AI routes
+router.get('/monthly-summary', expenseController.getMonthlySummary);
+router.get('/daily-trends/:year/:month', expenseController.getDailyTrends);
+router.get('/totals', expenseController.getTotals);
+router.post('/ai-summary', expenseController.getAiSummary);
+
+// OCR route with multer middleware
+router.post('/ocr-scan', upload.single('receipt'), expenseController.ocrScan);
 
 module.exports = router;

@@ -1,11 +1,12 @@
 // server.js
 
 // Import necessary libraries
+const dotenv = require('dotenv');
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
-const dotenv = require('dotenv');
 const path = require('path');
+const multer = require('multer'); // <-- Add Multer
 
 // Import the database connection function
 const connectDB = require('./config/db');
@@ -37,11 +38,26 @@ app.use(express.static(path.join(__dirname)));
 
 // Use the imported routes
 app.use('/', authRoutes);
-app.use('/api/expenses', expenseRoutes);
+app.use('/api/expenses', expenseRoutes); // <-- Corrected path
 
 // Route to serve the login test page
 app.get('/test-login', (req, res) => {
     res.sendFile(path.join(__dirname, 'login_test.html'));
+});
+
+// Test route to simulate login for API testing
+app.post('/test-auth', (req, res) => {
+    // Set a test session cookie for API testing
+    res.cookie('session-id', 'test-google-id-123', {
+        httpOnly: true,
+        signed: true,
+        maxAge: 3600000,
+        sameSite: 'strict',
+    });
+    res.status(200).json({
+        message: 'Test authentication successful',
+        note: 'Use this to get a session cookie for testing expense APIs'
+    });
 });
 
 // Start the server
