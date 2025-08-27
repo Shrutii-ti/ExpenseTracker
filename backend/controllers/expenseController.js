@@ -27,7 +27,7 @@ exports.createExpense = async (req, res) => {
         }
 
         const newExpense = await expenseService.createExpense({
-            user: req.user._id, // <-- The fix is here! We pass the user's ID to the service.
+            user: req.user._id, // Pass the user's MongoDB ObjectId
             title,
             amount,
             category,
@@ -150,12 +150,16 @@ exports.ocrScan = async (req, res) => {
     }
     
     try {
+        console.log('🔍 Starting OCR processing for file:', req.file.originalname);
         const result = await expenseService.performOcr(req.file.buffer);
+        console.log('🔍 OCR Result:', result);
+        
         if (!result) {
             return res.status(500).json({ message: 'OCR failed to process image' });
         }
         res.status(200).json(result);
     } catch (error) {
+        console.error('OCR Error:', error);
         res.status(500).json({ message: 'Server error during OCR' });
     }
 };

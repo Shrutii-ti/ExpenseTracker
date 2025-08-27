@@ -48,7 +48,7 @@ app.get('/test-login', (req, res) => {
 // Test route to simulate login for API testing
 app.post('/test-auth', (req, res) => {
     // Set a test session cookie for API testing
-    res.cookie('session-id', 'test-google-id-123', {
+    res.cookie('session-id', '101317284445167199044', {
         httpOnly: true,
         signed: true,
         maxAge: 3600000,
