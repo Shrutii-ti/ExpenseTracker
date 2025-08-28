@@ -5,10 +5,11 @@ const mongoose = require('mongoose');
 const Tesseract = require('tesseract.js');
 
 // Google Gemini API configuration
-const GOOGLE_API_KEY = 'AIzaSyBUbngB9B_i_96ARzKDidagPTgYanIrXAQ';
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || 'AIzaSyBUbngB9B_i_96ARzKDidagPTgYanIrXAQ';
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_API_KEY}`;
 
-console.log('Google Gemini API configured for OCR');
+console.log('Google Gemini API configured with key:', GOOGLE_API_KEY.substring(0, 20) + '...');
+console.log('Gemini API URL:', GEMINI_API_URL.substring(0, 100) + '...');
 
 // @desc    Get all expenses for a specific user
 // @param   {string} userId - The user's ID
@@ -133,31 +134,83 @@ exports.getTotals = async (userId) => {
 // @desc    Generate AI summary using LLM
 // @param   {string} prompt - The prompt for the LLM
 // @returns {string} The AI-generated summary
-exports.getAiSummary = async (prompt) => {
-    // Using Google Gemini API for AI summary
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_API_KEY}`;
+exports.getAiSummary = async (expenses) => {
+    console.log('=== AI SUMMARY API STARTED ===');
+    console.log('Input expenses type:', typeof expenses);
+    console.log('Input expenses length:', Array.isArray(expenses) ? expenses.length : 'Not an array');
+    console.log('Input expenses data:', JSON.stringify(expenses, null, 2));
     
+    const apiKey = "AIzaSyBUbngB9B_i_96ARzKDidagPTgYanIrXAQ";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+    
+    console.log('=== API CONFIGURATION ===');
+    console.log('API Key available:', !!apiKey);
+    console.log('API Key length:', apiKey.length);
+    console.log('API URL:', apiUrl.substring(0, 100) + '...');
+    
+    // Construct a more detailed prompt including the expense data.
+    const fullPrompt = `Analyze the following user's expense data. Provide a short, accurate summary in english of their spending habits. Focus on key spending categories and trends. The tone should be neutral and direct.
+    
+Expense Data (as JSON):
+\`\`\`json
+${JSON.stringify(expenses, null, 2)}
+\`\`\`
+
+Analyze this data and provide a concise, friendly summary.`;
+
+    console.log('=== CONSTRUCTED PROMPT ===');
+    console.log('Prompt length:', fullPrompt.length);
+    console.log('Prompt preview:', fullPrompt.substring(0, 200) + '...');
+
     let chatHistory = [];
-    chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+    chatHistory.push({ role: "user", parts: [{ text: fullPrompt }] });
     const payload = { contents: chatHistory };
 
+    console.log('=== REQUEST PAYLOAD ===');
+    console.log('Payload structure:', JSON.stringify(payload, null, 2));
+
     try {
+        console.log('=== MAKING API REQUEST ===');
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
 
+        console.log('=== API RESPONSE ===');
+        console.log('Response status:', response.status);
+        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('=== API ERROR RESPONSE ===');
+            console.error('Error status:', response.status);
+            console.error('Error text:', errorText);
+            throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+        }
+
         const result = await response.json();
+        console.log('=== API SUCCESS RESPONSE ===');
+        console.log('Full response:', JSON.stringify(result, null, 2));
+        
         const text = result.candidates[0].content.parts[0].text;
+        console.log('=== EXTRACTED SUMMARY ===');
+        console.log('Summary text:', text);
+        console.log('Summary length:', text.length);
+        
+        console.log('=== AI SUMMARY COMPLETED SUCCESSFULLY ===');
         return text;
     } catch (error) {
-        console.error('Error calling Gemini API:', error);
+        console.error('=== AI SUMMARY ERROR ===');
+        console.error('Error type:', error.constructor.name);
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
         return 'Could not generate AI summary. Please try again later.';
     }
 };
 
-// @desc    Perform AI-powered receipt analysis using OpenAI GPT-4o-mini
+
+// @desc    Perform AI-powered receipt analysis using Google Gemini
 // @param   {Buffer} imageBuffer - The image data as a buffer
 // @returns {object} Extracted amount, date, and category
 exports.performOcr = async (imageBuffer) => {
@@ -165,9 +218,12 @@ exports.performOcr = async (imageBuffer) => {
     console.log('Image buffer size:', imageBuffer.length, 'bytes');
     
     try {
-        console.log('Starting Google Gemini receipt analysis...');
+        console.log('=== ATTEMPTING GEMINI API ===');
+        console.log('API Key available:', !!GOOGLE_API_KEY);
+        console.log('API Key length:', GOOGLE_API_KEY.length);
         
         const base64Image = imageBuffer.toString('base64');
+        console.log('Base64 image length:', base64Image.length);
         
         const requestBody = {
             contents: [{
@@ -204,6 +260,7 @@ IMPORTANT RULES:
             }
         };
 
+        console.log('Making request to Gemini API...');
         const response = await fetch(GEMINI_API_URL, {
             method: 'POST',
             headers: {
@@ -212,12 +269,18 @@ IMPORTANT RULES:
             body: JSON.stringify(requestBody)
         });
 
+        console.log('Gemini API Response Status:', response.status);
+        console.log('Gemini API Response Headers:', Object.fromEntries(response.headers.entries()));
+
         if (!response.ok) {
-            throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
+            const errorText = await response.text();
+            console.error('Gemini API Error Response:', errorText);
+            throw new Error(`Gemini API error: ${response.status} ${response.statusText} - ${errorText}`);
         }
 
         const result = await response.json();
-        console.log('Gemini API Response:', result);
+        console.log('=== GEMINI API SUCCESS ===');
+        console.log('Full Gemini Response:', JSON.stringify(result, null, 2));
         
         const aiResponse = result.candidates[0].content.parts[0].text;
         console.log('Gemini Response Text:', aiResponse);
@@ -229,20 +292,24 @@ IMPORTANT RULES:
         }
         
         const extractedData = JSON.parse(jsonString);
-        console.log('Extracted Data:', extractedData);
+        console.log('=== GEMINI EXTRACTED DATA ===');
+        console.log('Parsed Data:', extractedData);
         
         return {
             amount: extractedData.amount,
             date: extractedData.date,
             category: extractedData.category,
             merchant: extractedData.merchant,
-            extractedText: aiResponse
+            extractedText: aiResponse,
+            source: 'GEMINI_API'
         };
     } catch (error) {
-        console.error('Gemini OCR failed:', error);
-        console.error('Error details:', error.message);
+        console.error('=== GEMINI API FAILED ===');
+        console.error('Error type:', error.constructor.name);
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
         
-        console.log('Gemini failed, using Tesseract.js as fallback...');
+        console.log('=== FALLING BACK TO TESSERACT ===');
         return await performTesseractOcr(imageBuffer);
     }
 };
@@ -296,7 +363,8 @@ async function performTesseractOcr(imageBuffer) {
             category: category || 'Other',
             merchant: merchant || 'Unknown',
             extractedText: text,
-            confidence: confidence
+            confidence: confidence,
+            source: 'TESSERACT_OCR'
         };
         
         console.log('=== RETURNING RESULT ===');

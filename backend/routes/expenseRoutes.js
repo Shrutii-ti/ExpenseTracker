@@ -16,7 +16,7 @@ router.use(authMiddleware.protect);
 router.get('/monthly-summary', expenseController.getMonthlySummary);
 router.get('/daily-trends/:year/:month', expenseController.getDailyTrends);
 router.get('/totals', expenseController.getTotals);
-router.post('/ai-summary', expenseController.getAiSummary);
+router.get('/ai-summary', expenseController.getAiSummary);
 
 // Main CRUD routes (/:id routes must come last)
 router.get('/', expenseController.getExpenses);

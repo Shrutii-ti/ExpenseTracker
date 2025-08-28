@@ -130,14 +130,16 @@ exports.getTotals = async (req, res) => {
 // @access  Private
 exports.getAiSummary = async (req, res) => {
     try {
-        const { prompt } = req.body;
-        if (!prompt) {
-            return res.status(400).json({ message: 'Prompt is required' });
-        }
-        const summary = await expenseService.getAiSummary(prompt);
+        // 1. Fetch the user's expenses first.
+        const expenses = await expenseService.getExpenses(req.user._id);
+        
+        // 2. Pass only the expenses to the service. The service will create the prompt.
+        const summary = await expenseService.getAiSummary(expenses);
+        
         res.status(200).json({ summary });
     } catch (error) {
-        res.status(500).json({ message: 'Server error' });
+        console.error('Error generating AI summary:', error);
+        res.status(500).json({ message: 'Server error while generating AI summary' });
     }
 };
 
@@ -150,14 +152,35 @@ exports.ocrScan = async (req, res) => {
     }
     
     try {
-        console.log('🔍 Starting OCR processing for file:', req.file.originalname);
         const result = await expenseService.performOcr(req.file.buffer);
-        console.log('🔍 OCR Result:', result);
         
         if (!result) {
             return res.status(500).json({ message: 'OCR failed to process image' });
         }
-        res.status(200).json(result);
+
+        // --- The Fix ---
+        // Validate required fields before saving to the database
+        if (!result.amount || !result.category || !result.merchant) {
+            console.error('OCR missing required fields:', { amount: result.amount, category: result.category, merchant: result.merchant });
+            return res.status(400).json({ message: 'OCR could not extract all required data (amount, category, or merchant)' });
+        }
+        
+        const expenseData = {
+            user: req.user._id,
+            title: result.merchant,
+            amount: result.amount,
+            category: result.category,
+            description: `Expense from receipt scan - ${req.file.originalname}`,
+            date: result.date || new Date().toISOString().split('T')[0]
+        };
+
+        const savedExpense = await expenseService.createExpense(expenseData);
+        
+        res.status(200).json({
+            ocrResult: result,
+            savedExpense: savedExpense,
+            message: 'Receipt processed and expense saved successfully'
+        });
     } catch (error) {
         console.error('OCR Error:', error);
         res.status(500).json({ message: 'Server error during OCR' });
