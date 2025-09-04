@@ -1,9 +1,11 @@
 import React from 'react';
 import { useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
+import DashboardPage from './pages/DashboardPage';
 
 const App = () => {
   const { isAuthenticated, loading } = useAuth();
+  console.log('App.js rendering. isAuthenticated:', isAuthenticated, 'Loading:', loading);
 
   if (loading) {
     return (
@@ -13,14 +15,7 @@ const App = () => {
     );
   }
 
-  return isAuthenticated ? (
-    <div className="text-center p-8 bg-gray-50">
-      <h1 className="text-4xl font-bold text-teal-600">Dashboard Page</h1>
-      <p className="mt-4 text-gray-700">You are successfully logged in! All your features would be built here.</p>
-    </div>
-  ) : (
-    <LoginPage />
-  );
+  return isAuthenticated ? <DashboardPage /> : <LoginPage />;
 };
 
 export default App;

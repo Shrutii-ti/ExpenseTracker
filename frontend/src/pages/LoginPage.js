@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../api/axiosInstance';
 
 const LoginPage = () => {
-  const { isAuthenticated, checkAuth } = useAuth();
+  const { isAuthenticated, login } = useAuth();
   const [status, setStatus] = useState('');
   const [error, setError] = useState(null);
 
@@ -17,20 +17,12 @@ const LoginPage = () => {
     const handleCredentialResponse = async (response) => {
       setStatus('Logging in...');
       setError(null);
-      try {
-        const res = await axiosInstance.post('/google-login', {
-          idToken: response.credential,
-        });
-
-        if (res.status === 200) {
-          setStatus('Login successful!');
-          checkAuth();
-        }
-      } catch (error) {
+      const success = await login(response.credential);
+      if (success) {
+        setStatus('Login successful! Redirecting...');
+      } else {
         setStatus('');
-        const errorMessage = error.response?.data?.message || error.message || 'Unknown network error';
-        setError('Login failed: ' + errorMessage);
-        console.error('Login error:', error.response?.data || error);
+        setError('Login failed. Please try again.');
       }
     };
 
@@ -46,18 +38,18 @@ const LoginPage = () => {
         { theme: 'outline', size: 'large', type: 'standard', width: '300' }
       );
     }
-  }, [checkAuth]);
-
+  }, [login]);
+  
   if (isAuthenticated) {
-    return null;
+    return null; // Don't render the login page if authenticated
   }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
       <div className="bg-white p-10 rounded-xl shadow-lg w-full max-w-sm text-center">
         <div className="flex justify-center items-center mb-4">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.362a9 9 0 010 12.724 9 9 0 01-12.724 0 9 9 0 010-12.724 9 9 0 0112.724 0z" />
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
           <h1 className="text-2xl font-bold text-gray-800 ml-2">Expense Tracker</h1>
         </div>
