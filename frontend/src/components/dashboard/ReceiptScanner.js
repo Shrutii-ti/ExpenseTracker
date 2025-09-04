@@ -27,7 +27,7 @@ const ReceiptScanner = ({ isOpen, onClose, onSuccess }) => {
     formData.append('receipt', file);
 
     try {
-      const res = await axiosInstance.post('/expenses/ocr-scan', formData, {
+      const res = await axiosInstance.post('/api/expenses/ocr-scan', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -56,7 +56,7 @@ const ReceiptScanner = ({ isOpen, onClose, onSuccess }) => {
         date: ocrResult.date ? moment(ocrResult.date).format('YYYY-MM-DD') : moment().format('YYYY-MM-DD'),
       };
       
-      await axiosInstance.post('/expenses', expenseData);
+      await axiosInstance.post('/api/expenses', expenseData);
       onSuccess();
       onClose();
     } catch (err) {

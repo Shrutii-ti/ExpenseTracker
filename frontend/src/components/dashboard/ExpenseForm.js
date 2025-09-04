@@ -40,9 +40,9 @@ const ExpenseForm = ({ isOpen, onClose, expense, onSuccess }) => {
     e.preventDefault();
     try {
       if (expense) {
-        await axiosInstance.put(`/expenses/${expense._id}`, formData);
+        await axiosInstance.put(`/api/expenses/${expense._id}`, formData);
       } else {
-        await axiosInstance.post('/expenses', formData);
+        await axiosInstance.post('/api/expenses', formData);
       }
       onSuccess();
       onClose();

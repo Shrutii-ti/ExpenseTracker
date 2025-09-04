@@ -23,9 +23,9 @@ const DashboardPage = () => {
     try {
       setLoading(true);
       const [expensesRes, totalsRes, summaryRes] = await Promise.all([
-        axiosInstance.get('/expenses'),
-        axiosInstance.get('/expenses/totals'),
-        axiosInstance.get('/expenses/monthly-summary'),
+        axiosInstance.get('/api/expenses'),
+        axiosInstance.get('/api/expenses/totals'),
+        axiosInstance.get('/api/expenses/monthly-summary'),
       ]);
       setExpenses(expensesRes.data);
       setTotals(totalsRes.data);

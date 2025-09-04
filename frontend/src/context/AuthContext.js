@@ -13,7 +13,7 @@ export const AuthProvider = ({ children }) => {
     try {
       // Add a small delay to ensure the cookie is set by the backend
       await new Promise(resolve => setTimeout(resolve, 50)); 
-      const response = await axiosInstance.get('/expenses/totals');
+      const response = await axiosInstance.get('/api/expenses/totals');
       if (response.status === 200) {
         setIsAuthenticated(true);
       } else {
