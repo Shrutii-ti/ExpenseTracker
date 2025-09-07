@@ -8,6 +8,7 @@ const LoginPage = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // Client ID is defined here once and used in both places
     const googleClientId = '536455245201-jcub08aa0k0qsiqo08s63563gbdck4qg.apps.googleusercontent.com';
     if (!googleClientId || googleClientId === '<your_google_client_id_here>') {
       setError('❌ Google Client ID is not configured. Please set it in LoginPage.js');

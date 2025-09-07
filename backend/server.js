@@ -37,7 +37,7 @@ app.use(cookieParser(process.env.COOKIE_SECRET));
 app.use(express.static(path.join(__dirname)));
 
 // Use the imported routes
-app.use('/', authRoutes);
+app.use('/api', authRoutes);
 app.use('/api/expenses', expenseRoutes); // <-- Corrected path
 
 // Route to serve the login test page
@@ -48,7 +48,7 @@ app.get('/test-login', (req, res) => {
 // Test route to simulate login for API testing
 app.post('/test-auth', (req, res) => {
     // Set a test session cookie for API testing
-    res.cookie('session-id', 'test-google-id-1245', {
+    res.cookie('session-id', '101317284445167199044', {
         httpOnly: true,
         signed: true,
         maxAge: 3600000,

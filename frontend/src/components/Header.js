@@ -1,12 +1,24 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import axiosInstance from '../api/axiosInstance';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
-const Header = ({ onOpenForm, onOpenScanner }) => {
+const Header = () => {
   const { logout } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handleAddExpenseClick = () => {
+    // Set a query parameter to open the modal
+    setSearchParams({ modal: 'add-expense' });
+  };
+  
+  const handleScanReceiptClick = () => {
+    // Set a query parameter to open the scanner
+    setSearchParams({ modal: 'scan-receipt' });
   };
 
   return (
@@ -21,7 +33,7 @@ const Header = ({ onOpenForm, onOpenScanner }) => {
           </div>
           <div className="flex items-center space-x-4">
             <button
-              onClick={() => onOpenForm()}
+              onClick={handleAddExpenseClick}
               className="px-4 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition"
             >
               + Add Expense

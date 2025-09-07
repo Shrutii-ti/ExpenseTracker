@@ -5,7 +5,7 @@ import moment from 'moment';
 const ExpenseList = ({ expenses, onOpenForm, fetchAllData }) => {
   const handleDelete = async (id) => {
     try {
-      await axiosInstance.delete(`/api/expenses/${id}`);
+      await axiosInstance.delete(`/expenses/${id}`);
       fetchAllData();
     } catch (error) {
       console.error('Delete failed:', error);

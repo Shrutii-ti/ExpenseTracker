@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Header from '../components/Header';
 import MetricCard from '../components/dashboard/MetricCard';
 import Charts from '../components/dashboard/Charts';
@@ -13,26 +14,27 @@ const DashboardPage = () => {
   const [expenses, setExpenses] = useState([]);
   const [totals, setTotals] = useState({ totalExpenses: 0, totalAmount: 0 });
   const [monthlySummary, setMonthlySummary] = useState([]);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  const [searchParams, setSearchParams] = useSearchParams();
+  const isFormOpen = searchParams.get('modal') === 'add-expense' || searchParams.get('modal') === 'edit-expense';
+  const isScannerOpen = searchParams.get('modal') === 'scan-receipt';
 
-  // Use useCallback to memoize the function and prevent the useEffect warning
   const fetchAllData = useCallback(async () => {
     try {
       setLoading(true);
       const [expensesRes, totalsRes, summaryRes] = await Promise.all([
-        axiosInstance.get('/api/expenses'),
-        axiosInstance.get('/api/expenses/totals'),
-        axiosInstance.get('/api/expenses/monthly-summary'),
+        axiosInstance.get('/expenses'),
+        axiosInstance.get('/expenses/totals'),
+        axiosInstance.get('/expenses/monthly-summary'),
       ]);
       setExpenses(expensesRes.data);
       setTotals(totalsRes.data);
       setMonthlySummary(summaryRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
-      checkAuth(); // Redirect to login if auth fails
+      checkAuth();
     } finally {
       setLoading(false);
     }
@@ -44,11 +46,12 @@ const DashboardPage = () => {
 
   const handleOpenForm = (expenseToEdit = null) => {
     setEditingExpense(expenseToEdit);
-    setIsFormOpen(true);
+    setSearchParams({ modal: 'edit-expense' });
   };
-
-  const handleOpenScanner = () => {
-    setIsScannerOpen(true);
+  
+  const handleCloseModal = () => {
+    setEditingExpense(null);
+    setSearchParams({});
   };
 
   if (loading) {
@@ -61,7 +64,7 @@ const DashboardPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
-      <Header onOpenForm={handleOpenForm} onOpenScanner={handleOpenScanner} />
+      <Header />
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-2">
@@ -92,7 +95,7 @@ const DashboardPage = () => {
                   Upload a receipt to automatically log your expenses.
                 </p>
                 <button
-                  onClick={handleOpenScanner}
+                  onClick={() => setSearchParams({ modal: 'scan-receipt' })}
                   className="w-full px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition"
                 >
                   Scan Receipt
@@ -104,13 +107,13 @@ const DashboardPage = () => {
       </main>
       <ExpenseForm
         isOpen={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
+        onClose={handleCloseModal}
         expense={editingExpense}
         onSuccess={fetchAllData}
       />
       <ReceiptScanner
         isOpen={isScannerOpen}
-        onClose={() => setIsScannerOpen(false)}
+        onClose={handleCloseModal}
         onSuccess={fetchAllData}
       />
     </div>

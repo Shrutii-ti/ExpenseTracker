@@ -48,8 +48,8 @@ exports.logout = (req, res) => {
 };
 
 // Protected route logic - redirect to expense controller
-exports.getExpenses = (req, res) => {
-    // This route is now handled by the expense controller
-    // Redirect to the proper expense endpoint
-    res.redirect('/api/expenses');
-};
+// exports.getExpenses = (req, res) => {
+//     // This route is now handled by the expense controller
+//     // Redirect to the proper expense endpoint
+//     res.redirect('/api/expenses');
+// };
