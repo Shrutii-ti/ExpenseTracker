@@ -1,17 +1,18 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import axiosInstance from '../api/axiosInstance';
-import { useNavigate } from 'react-router-dom';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
 
+  // This function checks for the presence of a valid session cookie.
+  // We use useCallback to prevent an infinite loop in useEffect.
   const checkAuth = useCallback(async () => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 50));
+      // Add a small delay to ensure the cookie is set by the backend
+      await new Promise(resolve => setTimeout(resolve, 50)); 
       const response = await axiosInstance.get('/expenses/totals');
       if (response.status === 200) {
         setIsAuthenticated(true);
@@ -34,7 +35,6 @@ export const AuthProvider = ({ children }) => {
     try {
       await axiosInstance.post('/google-login', { idToken });
       setIsAuthenticated(true);
-      navigate('/dashboard');
       return true;
     } catch (error) {
       console.error('Login failed:', error);
@@ -47,7 +47,6 @@ export const AuthProvider = ({ children }) => {
     try {
       await axiosInstance.post('/logout');
       setIsAuthenticated(false);
-      navigate('/');
     } catch (error) {
       console.error('Logout failed:', error);
     }

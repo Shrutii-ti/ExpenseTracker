@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import Header from '../components/Header';
 import MetricCard from '../components/dashboard/MetricCard';
 import Charts from '../components/dashboard/Charts';
@@ -14,31 +13,33 @@ const DashboardPage = () => {
   const [expenses, setExpenses] = useState([]);
   const [totals, setTotals] = useState({ totalExpenses: 0, totalAmount: 0 });
   const [monthlySummary, setMonthlySummary] = useState([]);
+  const [dailyTrends, setDailyTrends] = useState([]);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [loading, setLoading] = useState(true);
-  
-  const [searchParams, setSearchParams] = useSearchParams();
-  const isFormOpen = searchParams.get('modal') === 'add-expense' || searchParams.get('modal') === 'edit-expense';
-  const isScannerOpen = searchParams.get('modal') === 'scan-receipt';
+  const [activeMonth, setActiveMonth] = useState({ year: new Date().getFullYear(), month: new Date().getMonth() + 1 }); // <-- New state for active month
 
   const fetchAllData = useCallback(async () => {
     try {
       setLoading(true);
-      const [expensesRes, totalsRes, summaryRes] = await Promise.all([
+      const [expensesRes, totalsRes, summaryRes, trendsRes] = await Promise.all([
         axiosInstance.get('/expenses'),
         axiosInstance.get('/expenses/totals'),
         axiosInstance.get('/expenses/monthly-summary'),
+        axiosInstance.get(`/expenses/daily-trends/${activeMonth.year}/${activeMonth.month}`),
       ]);
       setExpenses(expensesRes.data);
       setTotals(totalsRes.data);
       setMonthlySummary(summaryRes.data);
+      setDailyTrends(trendsRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
       checkAuth();
     } finally {
       setLoading(false);
     }
-  }, [checkAuth]);
+  }, [checkAuth, activeMonth]);
 
   useEffect(() => {
     fetchAllData();
@@ -46,12 +47,16 @@ const DashboardPage = () => {
 
   const handleOpenForm = (expenseToEdit = null) => {
     setEditingExpense(expenseToEdit);
-    setSearchParams({ modal: 'edit-expense' });
+    setIsFormOpen(true);
   };
-  
-  const handleCloseModal = () => {
-    setEditingExpense(null);
-    setSearchParams({});
+
+  const handleOpenScanner = () => {
+    setIsScannerOpen(true);
+  };
+
+  const handleMonthChange = (e) => {
+    const [year, month] = e.target.value.split('-');
+    setActiveMonth({ year: parseInt(year), month: parseInt(month) });
   };
 
   if (loading) {
@@ -64,7 +69,7 @@ const DashboardPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
-      <Header />
+      <Header onOpenForm={handleOpenForm} onOpenScanner={handleOpenScanner} />
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-2">
@@ -74,7 +79,7 @@ const DashboardPage = () => {
                 <MetricCard title="Number of Records" value={totals.totalExpenses} />
                 <MetricCard title="Highest Category" value="Food" />
               </div>
-              <Charts monthlySummary={monthlySummary} />
+              <Charts monthlySummary={monthlySummary} dailyTrends={dailyTrends} activeMonth={activeMonth} handleMonthChange={handleMonthChange} />
               <ExpenseList expenses={expenses} onOpenForm={handleOpenForm} fetchAllData={fetchAllData} />
             </div>
           </div>
@@ -95,7 +100,7 @@ const DashboardPage = () => {
                   Upload a receipt to automatically log your expenses.
                 </p>
                 <button
-                  onClick={() => setSearchParams({ modal: 'scan-receipt' })}
+                  onClick={handleOpenScanner}
                   className="w-full px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition"
                 >
                   Scan Receipt
@@ -107,13 +112,13 @@ const DashboardPage = () => {
       </main>
       <ExpenseForm
         isOpen={isFormOpen}
-        onClose={handleCloseModal}
+        onClose={() => setIsFormOpen(false)}
         expense={editingExpense}
         onSuccess={fetchAllData}
       />
       <ReceiptScanner
         isOpen={isScannerOpen}
-        onClose={handleCloseModal}
+        onClose={() => setIsScannerOpen(false)}
         onSuccess={fetchAllData}
       />
     </div>
