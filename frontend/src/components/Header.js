@@ -39,6 +39,12 @@ const Header = () => {
               + Add Expense
             </button>
             <button
+              onClick={handleScanReceiptClick}
+              className="px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition"
+            >
+              Scan Receipt
+            </button>
+            <button
               onClick={handleLogout}
               className="px-4 py-2 text-red-500 hover:text-red-700 transition"
             >

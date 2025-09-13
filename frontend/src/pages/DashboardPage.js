@@ -26,7 +26,6 @@ const DashboardPage = () => {
   const [isAiSummaryLoading, setIsAiSummaryLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState(null);
   const [loginMessage, setLoginMessage] = useState(null);
-  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (location.state && location.state.message) {
@@ -58,7 +57,7 @@ const DashboardPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [checkAuth, activeMonth, refreshKey]);
+  }, [checkAuth, activeMonth]);
 
   useEffect(() => {
     fetchAllData();
@@ -126,10 +125,9 @@ const DashboardPage = () => {
 
   const showSuccessMessage = (message) => {
     setSuccessMessage(message);
-    setRefreshKey(prevKey => prevKey + 1);
+    fetchAllData();
   };
 
-  // FIX: This new function correctly handles the success flow for the ExpenseForm
   const handleFormSuccess = () => {
     showSuccessMessage('Expense saved successfully!');
     handleCloseModal();
