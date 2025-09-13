@@ -34,7 +34,8 @@ exports.googleLogin = async (req, res) => {
         httpOnly: true,
         signed: true,
         maxAge: 3600000,
-        sameSite: 'strict',
+        sameSite: 'none',   // allow frontend-backend cross-site
+        secure: true  
     });
 
     console.log('✅ Login successful for user:', user.email);
