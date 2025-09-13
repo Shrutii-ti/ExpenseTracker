@@ -27,7 +27,7 @@ connectDB();
 
 // Set up middleware
 app.use(cors({
-    origin: 'http://localhost:3000',
+    origin: 'https://creative-kulfi-345e12.netlify.app',
     credentials: true,
 }));
 app.use(express.json());
