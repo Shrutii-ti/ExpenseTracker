@@ -7,12 +7,19 @@ const Charts = ({ monthlySummary, dailyTrends, activeMonth, handleMonthChange })
   const chartInstance = useRef(null);
   const dailyChartInstance = useRef(null);
 
+  const getMonthName = (monthNumber) => {
+    const date = new Date();
+    date.setMonth(monthNumber - 1);
+    return date.toLocaleString('default', { month: 'long' });
+  };
+
   useEffect(() => {
     if (chartInstance.current) {
       chartInstance.current.destroy();
     }
 
-    const labels = monthlySummary.map(item => `Month ${item._id}`);
+    // Map the monthly summary data to get month names and amounts
+    const labels = monthlySummary.map(item => getMonthName(item.month));
     const data = monthlySummary.map(item => item.totalAmount);
     const ctx = monthlyChartRef.current.getContext('2d');
 
@@ -70,7 +77,8 @@ const Charts = ({ monthlySummary, dailyTrends, activeMonth, handleMonthChange })
       return;
     }
     
-    const labels = dailyTrends.map(item => `Day ${item._id}`);
+    // Map the daily trends data to get day numbers and amounts
+    const labels = dailyTrends.map(item => `Day ${item.day}`);
     const data = dailyTrends.map(item => item.totalAmount);
     const ctx = dailyChartRef.current.getContext('2d');
 
@@ -137,8 +145,8 @@ const Charts = ({ monthlySummary, dailyTrends, activeMonth, handleMonthChange })
               className="appearance-none block w-full px-4 py-2 pr-8 leading-tight bg-white border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
             >
               {monthlySummary.map(item => (
-                <option key={item._id} value={`${activeMonth.year}-${item._id}`}>
-                  {new Date(activeMonth.year, item._id - 1).toLocaleString('default', { month: 'long' })}
+                <option key={item.month} value={`${item.year}-${item.month}`}>
+                  {getMonthName(item.month)} {item.year}
                 </option>
               ))}
             </select>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import Header from '../components/Header';
 import MetricCard from '../components/dashboard/MetricCard';
 import Charts from '../components/dashboard/Charts';
@@ -10,6 +11,7 @@ import { useAuth } from '../context/AuthContext';
 
 const DashboardPage = () => {
   const { checkAuth } = useAuth();
+  const location = useLocation();
   const [expenses, setExpenses] = useState([]);
   const [totals, setTotals] = useState({ totalExpenses: 0, totalAmount: 0 });
   const [monthlySummary, setMonthlySummary] = useState([]);
@@ -18,7 +20,24 @@ const DashboardPage = () => {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeMonth, setActiveMonth] = useState({ year: new Date().getFullYear(), month: new Date().getMonth() + 1 }); // <-- New state for active month
+  const [activeMonth, setActiveMonth] = useState({ year: new Date().getFullYear(), month: new Date().getMonth() + 1 });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [aiSummary, setAiSummary] = useState(null);
+  const [isAiSummaryLoading, setIsAiSummaryLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState(null);
+  const [loginMessage, setLoginMessage] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    if (location.state && location.state.message) {
+      setLoginMessage(location.state.message);
+      const timer = setTimeout(() => {
+        setLoginMessage(null);
+        window.history.replaceState({}, document.title);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [location.state]);
 
   const fetchAllData = useCallback(async () => {
     try {
@@ -39,24 +58,86 @@ const DashboardPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [checkAuth, activeMonth]);
+  }, [checkAuth, activeMonth, refreshKey]);
 
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);
 
+  useEffect(() => {
+    if (searchParams.get('modal') === 'add-expense') {
+      setIsFormOpen(true);
+    } else {
+      setIsFormOpen(false);
+    }
+
+    if (searchParams.get('modal') === 'scan-receipt') {
+      setIsScannerOpen(true);
+    } else {
+      setIsScannerOpen(false);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage(null);
+      }, 5000); 
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
+
   const handleOpenForm = (expenseToEdit = null) => {
     setEditingExpense(expenseToEdit);
-    setIsFormOpen(true);
+    setSearchParams({ modal: 'add-expense' });
   };
 
   const handleOpenScanner = () => {
-    setIsScannerOpen(true);
+    setSearchParams({ modal: 'scan-receipt' });
   };
 
   const handleMonthChange = (e) => {
     const [year, month] = e.target.value.split('-');
     setActiveMonth({ year: parseInt(year), month: parseInt(month) });
+  };
+
+  const handleCloseModal = () => {
+    setSearchParams({});
+    setEditingExpense(null);
+  };
+  
+  const handleGenerateAISummary = async () => {
+    setIsAiSummaryLoading(true);
+    setAiSummary(null);
+    try {
+      const response = await axiosInstance.get('/expenses/ai-summary');
+      setAiSummary(response.data.summary);
+    } catch (error) {
+      console.error("Failed to generate AI summary:", error);
+      setAiSummary("Sorry, an error occurred while generating the summary. Please check your backend logs.");
+    } finally {
+      setIsAiSummaryLoading(false);
+    }
+  };
+
+  const handleCloseAiSummary = () => {
+    setAiSummary(null);
+  };
+
+  const showSuccessMessage = (message) => {
+    setSuccessMessage(message);
+    setRefreshKey(prevKey => prevKey + 1);
+  };
+
+  // FIX: This new function correctly handles the success flow for the ExpenseForm
+  const handleFormSuccess = () => {
+    showSuccessMessage('Expense saved successfully!');
+    handleCloseModal();
+  };
+  
+  const handleScanSuccess = () => {
+    showSuccessMessage('Expense scanned and added successfully!');
+    handleCloseModal();
   };
 
   if (loading) {
@@ -69,8 +150,24 @@ const DashboardPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
-      <Header onOpenForm={handleOpenForm} onOpenScanner={handleOpenScanner} />
+      <Header />
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        {loginMessage && (
+          <div className="fixed top-4 right-4 z-50">
+            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg shadow-md" role="alert">
+              <strong className="font-bold">Success!</strong>
+              <span className="block sm:inline ml-2">{loginMessage}</span>
+            </div>
+          </div>
+        )}
+        {successMessage && (
+          <div className="fixed top-20 right-4 z-50">
+            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg shadow-md" role="alert">
+              <strong className="font-bold">Success!</strong>
+              <span className="block sm:inline ml-2">{successMessage}</span>
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-2">
             <div className="space-y-6">
@@ -90,8 +187,23 @@ const DashboardPage = () => {
                 <p className="text-sm text-gray-500 mb-4">
                   Get a personalized summary of your spending habits and tips for saving money.
                 </p>
-                <button className="w-full px-4 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition">
-                  Generate AI Summary
+                {aiSummary && (
+                  <div className="bg-gray-100 p-4 rounded-lg text-gray-700 mb-4 relative">
+                    <p>{aiSummary}</p>
+                    <button
+                      onClick={handleCloseAiSummary}
+                      className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                )}
+                <button
+                  onClick={handleGenerateAISummary}
+                  className="w-full px-4 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition"
+                  disabled={isAiSummaryLoading}
+                >
+                  {isAiSummaryLoading ? 'Generating...' : 'Generate AI Summary'}
                 </button>
               </div>
               <div className="bg-white rounded-xl shadow p-6">
@@ -112,14 +224,14 @@ const DashboardPage = () => {
       </main>
       <ExpenseForm
         isOpen={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
+        onClose={handleCloseModal}
         expense={editingExpense}
-        onSuccess={fetchAllData}
+        onSuccess={handleFormSuccess}
       />
       <ReceiptScanner
         isOpen={isScannerOpen}
-        onClose={() => setIsScannerOpen(false)}
-        onSuccess={fetchAllData}
+        onClose={handleCloseModal}
+        onSuccess={handleScanSuccess}
       />
     </div>
   );

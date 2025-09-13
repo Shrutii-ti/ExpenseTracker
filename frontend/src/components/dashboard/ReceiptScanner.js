@@ -5,6 +5,7 @@ import moment from 'moment';
 const ReceiptScanner = ({ isOpen, onClose, onSuccess }) => {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [ocrResult, setOcrResult] = useState(null);
   const [error, setError] = useState(null);
 
@@ -22,12 +23,13 @@ const ReceiptScanner = ({ isOpen, onClose, onSuccess }) => {
     
     setLoading(true);
     setError(null);
+    console.log('Preparing to send file:', file.name);
 
     const formData = new FormData();
     formData.append('receipt', file);
 
     try {
-      const res = await axiosInstance.post('/api/expenses/ocr-scan', formData, {
+      const res = await axiosInstance.post('/expenses/ocr-scan', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -36,16 +38,22 @@ const ReceiptScanner = ({ isOpen, onClose, onSuccess }) => {
     } catch (err) {
       setError('Failed to scan receipt. Please try again.');
       console.error('OCR scan error:', err);
+      // Log the full response to help with debugging
+      if (err.response) {
+        console.error('Server response data:', err.response.data);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const handleSave = async () => {
-    if (!ocrResult) {
-      setError('No scan result to save.');
+    if (!ocrResult || isSaving) {
       return;
     }
+    
+    setIsSaving(true);
+    setError(null);
 
     try {
       const expenseData = {
@@ -56,20 +64,32 @@ const ReceiptScanner = ({ isOpen, onClose, onSuccess }) => {
         date: ocrResult.date ? moment(ocrResult.date).format('YYYY-MM-DD') : moment().format('YYYY-MM-DD'),
       };
       
-      await axiosInstance.post('/api/expenses', expenseData);
+      await axiosInstance.post('/expenses', expenseData);
+      
       onSuccess();
-      onClose();
+      // onClose();
     } catch (err) {
       setError('Failed to save expense. Please try again.');
       console.error('Save expense error:', err);
+    } finally {
+      setIsSaving(false);
     }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
       <div className="relative p-8 bg-white rounded-xl shadow-lg w-full max-w-lg">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
         <h3 className="text-2xl font-semibold mb-6 text-gray-800">Scan Receipt</h3>
         <input
           type="file"
@@ -96,16 +116,19 @@ const ReceiptScanner = ({ isOpen, onClose, onSuccess }) => {
             <p>Category: {ocrResult.category}</p>
             <div className="mt-4 flex justify-end space-x-4">
               <button
-                onClick={() => { setOcrResult(null); setFile(null); }}
+                onClick={onClose}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
-                className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition"
+                disabled={isSaving}
+                className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition ${
+                  isSaving ? 'bg-gray-400' : 'bg-teal-600 hover:bg-teal-700'
+                }`}
               >
-                Save as Expense
+                {isSaving ? 'Saving...' : 'Save as Expense'}
               </button>
             </div>
           </div>

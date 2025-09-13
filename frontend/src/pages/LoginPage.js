@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import axiosInstance from '../api/axiosInstance';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 
 const LoginPage = () => {
   const { isAuthenticated, login } = useAuth();
+  const navigate = useNavigate(); // Initialize useNavigate
   const [status, setStatus] = useState('');
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Client ID is defined here once and used in both places
-    const googleClientId = '536455245201-jcub08aa0k0qsiqo08s63563gbdck4qg.apps.googleusercontent.com';
+    const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
     if (!googleClientId || googleClientId === '<your_google_client_id_here>') {
       setError('❌ Google Client ID is not configured. Please set it in LoginPage.js');
       return;
@@ -21,6 +21,8 @@ const LoginPage = () => {
       const success = await login(response.credential);
       if (success) {
         setStatus('Login successful! Redirecting...');
+        // Use navigate to redirect and pass state
+        setTimeout(() => navigate('/dashboard', { state: { message: 'Login successful!' } }), 1000);
       } else {
         setStatus('');
         setError('Login failed. Please try again.');
@@ -39,7 +41,7 @@ const LoginPage = () => {
         { theme: 'outline', size: 'large', type: 'standard', width: '300' }
       );
     }
-  }, [login]);
+  }, [login, navigate]);
   
   if (isAuthenticated) {
     return null; // Don't render the login page if authenticated
@@ -78,3 +80,6 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
+
+
+// process.env.MONGODB_URI

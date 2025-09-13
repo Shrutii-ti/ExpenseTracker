@@ -5,11 +5,11 @@ const mongoose = require('mongoose');
 const Tesseract = require('tesseract.js');
 
 // Google Gemini API configuration
-const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || 'AIzaSyBUbngB9B_i_96ARzKDidagPTgYanIrXAQ';
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_API_KEY}`;
 
-console.log('Google Gemini API configured with key:', GOOGLE_API_KEY.substring(0, 20) + '...');
-console.log('Gemini API URL:', GEMINI_API_URL.substring(0, 100) + '...');
+console.log('Google Gemini API configured with key:', GOOGLE_API_KEY ? GOOGLE_API_KEY.substring(0, 20) + '...' : 'Not configured');
+console.log('Gemini API URL:', GOOGLE_API_KEY ? GEMINI_API_URL.substring(0, 100) + '...' : 'Not configured');
 
 // @desc    Get all expenses for a specific user
 // @param   {string} userId - The user's ID
@@ -42,12 +42,9 @@ exports.updateExpense = async (id, userId, updateData) => {
     return await Expense.findOneAndUpdate({ _id: id, user: userId }, updateData, { new: true });
 };
 
-// @desc    Delete an expense by ID
-// @param   {string} id - Expense ID
-// @param   {string} userId - The user's ID
-// @returns {object} The deleted expense object
+
 exports.deleteExpense = async (id, userId) => {
-    return await Expense.findOneAndDelete({ _id: id, user: userId });
+    return await Expense.findOneAndDelete({ _id: id, user: userId }, { new: true });
 };
 
 // --- New Functions Below ---
@@ -69,16 +66,46 @@ exports.getMonthlySummary = async (userId) => {
             },
             {
                 $group: {
-                    _id: { $month: '$date' },
+                    _id: {
+                        year: { $year: '$date' },
+                        month: { $month: '$date' }
+                    },
                     totalAmount: { $sum: '$amount' },
                     categories: {
                         $push: { category: '$category', amount: '$amount' }
                     }
                 }
             },
-            { $sort: { _id: 1 } }
+            {
+                $project: {
+                    _id: 0,
+                    year: '$_id.year',
+                    month: '$_id.month',
+                    totalAmount: 1,
+                    categories: 1
+                }
+            },
+            { $sort: { year: 1, month: 1 } }
         ]);
-        return summary;
+        
+        // Post-process the categories to get a single total per category per month
+        const refinedSummary = summary.map(monthData => {
+            const categoryTotals = {};
+            monthData.categories.forEach(item => {
+                categoryTotals[item.category] = (categoryTotals[item.category] || 0) + item.amount;
+            });
+
+            return {
+                ...monthData,
+                categories: Object.keys(categoryTotals).map(category => ({
+                    category,
+                    totalAmount: categoryTotals[category]
+                }))
+            };
+        });
+
+        return refinedSummary;
+
     } catch (error) {
         console.error('Error in monthly summary aggregation:', error);
         return [];
@@ -110,12 +137,21 @@ exports.getDailyTrends = async (userId, month, year) => {
             },
             { $sort: { _id: 1 } }
         ]);
-        return trends;
+
+        const daysInMonth = new Date(year, month, 0).getDate();
+        const fullTrends = Array.from({ length: daysInMonth }, (_, i) => {
+            const day = i + 1;
+            const trend = trends.find(t => t._id === day);
+            return { day, totalAmount: trend ? trend.totalAmount : 0 };
+        });
+
+        return fullTrends;
     } catch (error) {
         console.error('Error in daily trends aggregation:', error);
         return [];
     }
 };
+
 
 // @desc    Get total number of expenses and total amount
 // @param   {string} userId - The user's ID
@@ -135,18 +171,12 @@ exports.getTotals = async (userId) => {
 // @param   {string} prompt - The prompt for the LLM
 // @returns {string} The AI-generated summary
 exports.getAiSummary = async (expenses) => {
-    console.log('=== AI SUMMARY API STARTED ===');
-    console.log('Input expenses type:', typeof expenses);
-    console.log('Input expenses length:', Array.isArray(expenses) ? expenses.length : 'Not an array');
-    console.log('Input expenses data:', JSON.stringify(expenses, null, 2));
-    
-    const apiKey = "AIzaSyBUbngB9B_i_96ARzKDidagPTgYanIrXAQ";
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-    
-    console.log('=== API CONFIGURATION ===');
-    console.log('API Key available:', !!apiKey);
-    console.log('API Key length:', apiKey.length);
-    console.log('API URL:', apiUrl.substring(0, 100) + '...');
+    if (!GOOGLE_API_KEY) {
+        console.error('GOOGLE_API_KEY is not set. Cannot call Gemini API.');
+        return 'AI summary service is not configured. Please contact support.';
+    }
+
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_API_KEY}`;
     
     // Construct a more detailed prompt including the expense data.
     const fullPrompt = `Analyze the following user's expense data. Provide a short, accurate summary in english of their spending habits. Focus on key spending categories and trends. The tone should be neutral and direct.
@@ -158,53 +188,28 @@ ${JSON.stringify(expenses, null, 2)}
 
 Analyze this data and provide a concise, friendly summary.`;
 
-    console.log('=== CONSTRUCTED PROMPT ===');
-    console.log('Prompt length:', fullPrompt.length);
-    console.log('Prompt preview:', fullPrompt.substring(0, 200) + '...');
-
     let chatHistory = [];
     chatHistory.push({ role: "user", parts: [{ text: fullPrompt }] });
     const payload = { contents: chatHistory };
 
-    console.log('=== REQUEST PAYLOAD ===');
-    console.log('Payload structure:', JSON.stringify(payload, null, 2));
-
     try {
-        console.log('=== MAKING API REQUEST ===');
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
 
-        console.log('=== API RESPONSE ===');
-        console.log('Response status:', response.status);
-        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('=== API ERROR RESPONSE ===');
-            console.error('Error status:', response.status);
-            console.error('Error text:', errorText);
             throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
         }
 
         const result = await response.json();
-        console.log('=== API SUCCESS RESPONSE ===');
-        console.log('Full response:', JSON.stringify(result, null, 2));
-        
         const text = result.candidates[0].content.parts[0].text;
-        console.log('=== EXTRACTED SUMMARY ===');
-        console.log('Summary text:', text);
-        console.log('Summary length:', text.length);
         
-        console.log('=== AI SUMMARY COMPLETED SUCCESSFULLY ===');
         return text;
     } catch (error) {
-        console.error('=== AI SUMMARY ERROR ===');
-        console.error('Error type:', error.constructor.name);
-        console.error('Error message:', error.message);
-        console.error('Error stack:', error.stack);
+        console.error('AI Summary Error:', error.message);
         return 'Could not generate AI summary. Please try again later.';
     }
 };

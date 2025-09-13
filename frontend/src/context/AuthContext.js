@@ -7,12 +7,9 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // This function checks for the presence of a valid session cookie.
-  // We use useCallback to prevent an infinite loop in useEffect.
   const checkAuth = useCallback(async () => {
     try {
-      // Add a small delay to ensure the cookie is set by the backend
-      await new Promise(resolve => setTimeout(resolve, 50)); 
+      await new Promise(resolve => setTimeout(resolve, 50));
       const response = await axiosInstance.get('/expenses/totals');
       if (response.status === 200) {
         setIsAuthenticated(true);
