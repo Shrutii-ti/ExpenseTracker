@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import Header from '../components/Header';
 import MetricCard from '../components/dashboard/MetricCard';
@@ -138,6 +138,21 @@ const DashboardPage = () => {
     handleCloseModal();
   };
 
+  // <-- NEW: compute highest category safely from expenses
+  const highestCategory = useMemo(() => {
+    if (!expenses || expenses.length === 0) return '-';
+    const totalsByCat = {};
+    for (const e of expenses) {
+      const cat = (e.category || 'Unknown').toString().trim();
+      const amt = Number(e.amount) || 0;
+      totalsByCat[cat] = (totalsByCat[cat] || 0) + amt;
+    }
+    const entries = Object.entries(totalsByCat);
+    if (entries.length === 0) return '-';
+    entries.sort((a, b) => b[1] - a[1]); // descending by amount
+    return entries[0][0];
+  }, [expenses]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -172,7 +187,7 @@ const DashboardPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <MetricCard title="Total Expenses" value={totals.totalAmount} unit="₹" />
                 <MetricCard title="Number of Records" value={totals.totalExpenses} />
-                <MetricCard title="Highest Category" value="Food" />
+                <MetricCard title="Highest Category" value={highestCategory} />
               </div>
               <Charts monthlySummary={monthlySummary} dailyTrends={dailyTrends} activeMonth={activeMonth} handleMonthChange={handleMonthChange} />
               <ExpenseList expenses={expenses} onOpenForm={handleOpenForm} fetchAllData={fetchAllData} />
