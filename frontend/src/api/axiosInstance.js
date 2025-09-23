@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 // The URL of your backend server
-// const BACKEND_URL = 'https://expensetracker-s79p.onrender.com/api';
-const BACKEND_URL = 'http://localhost:4000/api';
+const BACKEND_URL = 'https://expensetracker-s79p.onrender.com/api';
+// const BACKEND_URL = 'http://localhost:4000/api';
 
 
 const axiosInstance = axios.create({
