@@ -29,8 +29,8 @@ exports.createExpense = async (expenseData) => {
 // @param   {string} id - Expense ID
 // @param   {string} userId - The user's ID
 // @returns {object} The expense object
-exports.getExpenseById = async (id, userId) => {
-    return await Expense.findOne({ _id: id, user: userId });
+exports.getExpenses = async (userId) => {
+  return await Expense.find({ user: userId }).sort({ date: -1 });
 };
 
 // @desc    Update an expense by ID
@@ -179,7 +179,7 @@ exports.getAiSummary = async (expenses) => {
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_API_KEY}`;
     
     // Construct a more detailed prompt including the expense data.
-    const fullPrompt = `Analyze the following user's expense data. Provide a short, accurate summary in english of their spending habits. Focus on key spending categories and trends. The tone should be neutral and direct.
+    const fullPrompt = `Here is my expense data (date, category, amount, and description). Please analyze it and provide a short, clear summary of my spending habits. Focus on the main categories where I spend the most, highlight any noticeable trends over time, and mention if there are areas where spending is consistently high or low. Keep the tone neutral and factual.
     
 Expense Data (as JSON):
 \`\`\`json
